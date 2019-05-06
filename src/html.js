@@ -64,6 +64,17 @@ module.exports = function( options, callback )
         var args = this;
 
         args.element = replaceInlineAttribute( args.element );
+        var re = new RegExp( inline.escapeSpecialChars( args.element ), "g" );
+        
+        if (typeof(settings.beforeStylesheet) === 'function') {
+            var beforeResult = settings.beforeStylesheet(args.src, args.element);
+            if (typeof(beforeResult) === 'string') {
+                result = result.replace(re, () => beforeResult);
+                return callback(null);
+            } else if (beforeResult === false) {
+                return callback(null);
+            }
+        }
 
         inline.getTextReplacement( args.src, settings, function( err, content )
         {
@@ -83,7 +94,7 @@ module.exports = function( options, callback )
                 {
                     return callback( null );
                 }
-
+                
                 var cssOptions = xtend( {}, settings, {
                     fileContent: content.toString(),
                     rebaseRelativeTo: path.relative( settings.relativeTo, settings.rebaseRelativeTo || path.join( settings.relativeTo, args.src, ".." + path.sep ) )
@@ -98,8 +109,11 @@ module.exports = function( options, callback )
                     var html = content.toString();
                     html = html.replace( /<\/script>/gmi, "<\\/script>" );
                     html = "<style" + ( args.attrs ? " " + args.attrs : "" ) + ">\n" + html.replace( /\/\*[\s]*--[\s]*>*/gm, "/* - ->" ) + "\n</style>";
-                    var re = new RegExp( inline.escapeSpecialChars( args.element ), "g" );
                     result = result.replace( re, () => html );
+                    
+                    if (typeof(settings.afterStylesheet) === 'function') {
+                        settings.afterStylesheet(args.src, args.element, html);
+                    }
                     return callback( null );
                 } );
             };

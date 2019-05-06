@@ -85,6 +85,14 @@ function getRemote( uri, settings, callback, toDataUri )
     {
         uri = "https:" + uri;
     }
+    
+    if (typeof(settings.beforeRequest) === 'function') {
+        var beforeResult = settings.beforeRequest(uri, toDataUri);
+        
+        if (typeof(beforeResult) !== 'undefined') {
+            return callback(null, beforeResult);
+        }
+    }
 
     var requestOptions = {
         uri: uri,
@@ -117,6 +125,19 @@ function getRemote( uri, settings, callback, toDataUri )
             else if( response.statusCode !== 200 )
             {
                 return callback( new Error( uri + " returned http " + response.statusCode ) );
+            }
+            
+            if (typeof(settings.afterRequest) === 'function') {
+                //rewrite callback
+                let oldCallback = callback;
+                
+                callback = function(err, result) {
+                    if (err) {
+                        return oldCallback(err);
+                    }
+                    settings.afterRequest(uri, toDataUri, result);
+                    oldCallback(null, result);
+                }
             }
 
             if( toDataUri )
